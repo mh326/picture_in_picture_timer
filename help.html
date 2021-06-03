@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Picture in Picture Timer</title>
+    <link href="./css/bootstrap.min.css" rel="stylesheet">
+    <script src="./js/main.js"></script>
+</head>
+
+<body>
+    <div class="container p-4">
+        <div class="py-2">
+            <h3>使い方</h3>
+            <p>
+                Picture in Pictureにより、最前面に表示するタイマーです。<br>
+                時間が切れたらBeep音が鳴ります。<br>
+                一部ブラウザでは動作しない可能性があります。<br>
+                参考：<a href="https://caniuse.com/picture-in-picture">Can I use... Support tables for HTML5, CSS3, etc</a>
+            </p>
+            <dl class="row">
+                <dt class="col-sm-2">START/STOPボタン</dt>
+                <dd class="col-sm-9">Picture in Pictureにより最前面にタイマーが表示され、タイマーが開始/停止します。</dd>
+                <dt class="col-sm-2">RESETボタン</dt>
+                <dd class="col-sm-9">タイマーが停止され、入力した時間にタイマーがセットされます。</dd>
+            </dl>
+        </div>
+        <div class="py-2">
+            <h4>パラメータ一覧</h4>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">パラメータ名</th>
+                        <th scope="col">説明</th>
+                        <th scope="col">デフォルト値</th>
+                        <th scope="col">例</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th scope="row">min, sec</th>
+                        <td>初期値の分、秒</td>
+                        <td>5, 0</td>
+                        <td><a href="index.html?min=1&sec=30">?min=1&sec=30</a></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">w, h</th>
+                        <td>タイマーの幅、高さ</td>
+                        <td>220, 120</td>
+                        <td><a href="index.html?w=400&h=300">?w=400&h=300</a></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">font</th>
+                        <td>フォント</td>
+                        <td>sans-serif</td>
+                        <td><a href="index.html?font=serif">?font=serif</a></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">fontSize</th>
+                        <td>フォントサイズ(時間)</td>
+                        <td>52px</td>
+                        <td><a href="index.html?fontSize=32px">?fontSize=32px</a></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">fontSizeTimeOver</th>
+                        <td>フォントサイズ(タイムオーバー)</td>
+                        <td>34px</td>
+                        <td><a href="index.html?fontSizeTimeOver=16px">?fontSizeTimeOver=16px</a></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">fontColor</th>
+                        <td>フォント色</td>
+                        <td>59FFA0</td>
+                        <td><a href="index.html?fontColor=FFFFFF">?fontColor=FFFFFF</a></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">mute</th>
+                        <td>Beep音を鳴らすのチェックボックスをoffにする</td>
+                        <td>1</td>
+                        <td><a href="index.html?mute=1">?mute=1</a></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="py-2">
+            <h4>ページ埋め込み</h4>
+            <pre
+                class="border p-2"><code>&lt;iframe src="https://mh326.github.io/picture_in_picture_timer/?min=3" width="600" height="240"&gt;&lt;/iframe&gt;</code></pre>
+        </div>
+        <div class="py-2">
+            <p>
+                <a href="index.html">TOPに戻る</a>
+            </p>
+        </div>
+    </div>
+</body>
