@@ -11,15 +11,25 @@ function formatTime(leftSeconds) {
     return `${zeroPad(minutes, 2)} : ${zeroPad(seconds, 2)}`;
 }
 
-async function createVideo(canvasEl) {
-    const video = document.createElement('video');
-    video.muted = true;
+async function loadVideo(canvasEl) {
+    const video = document.getElementById("video-timer");
     video.srcObject = canvasEl.captureStream();
-    video.autoPictureInPicture = true;
+}
+
+async function playVideo() {
+    const video = document.getElementById("video-timer");
     video.play();
-    video.addEventListener('loadedmetadata', () => {
+
+    if (video.requestPictureInPicture !== undefined) {
+        // Chromeなど、Picture-in-Picture APIに対応しているブラウザであれば
+        // そのままPicture-in-Pictureモードに入る
         video.requestPictureInPicture();
-    });
+    } else {
+        // Firefoxなど、Picture-in-Picture APIに対応していないブラウザであれば
+        // ビデオそのものを画面に表示する
+        const videoContainer = document.getElementById("video-container");
+        videoContainer.hidden = false;
+    }
 }
 
 async function playBeep() {
@@ -58,6 +68,7 @@ class Timer {
     init() {
         const text = formatTime(this.leftSeconds);
         this.writeToCanvas(text);
+        loadVideo(this.canvasEl);
     }
     start() {
         if (this.isPlaying) {
@@ -79,7 +90,7 @@ class Timer {
             const text = formatTime(this.leftSeconds);
             this.writeToCanvas(text);
         }, 1000);
-        createVideo(this.canvasEl);
+        playVideo();
         this.isPlaying = true;
         this.isPause = false;
     }
@@ -108,6 +119,8 @@ class Timer {
             this.canvasCtx.font = this.fontSizeTimeOver + ' ' + this.font;
         }
         this.canvasCtx.clearRect(0, 0, this.canvasEl.width, this.canvasEl.height);
+        this.canvasCtx.fillStyle = "black";
+        this.canvasCtx.fillRect(0, 0, this.canvasEl.width, this.canvasEl.height);
         this.canvasCtx.textAlign = 'center';
         this.canvasCtx.fillStyle = "#" + this.fontColor;
         this.canvasCtx.fillText(text, this.canvasEl.width / 2, this.canvasEl.height / 2);
