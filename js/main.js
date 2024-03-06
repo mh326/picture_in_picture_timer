@@ -2,7 +2,8 @@ const TIME_OVER_TEXT = "TIME OVER";
 
 const zeroPad = (num, places) => String(num).padStart(places, '0');
 
-function formatTime(leftSeconds) {
+function formatTime(leftMillieconds) {
+    const leftSeconds = Math.ceil(leftMillieconds / 1000);
     if (leftSeconds === 0) {
         return TIME_OVER_TEXT;
     }
@@ -53,7 +54,7 @@ function setParam(timer, params, name) {
 
 class Timer {
     constructor() {
-        this.setTime();
+        this.setTimeFromInputBox();
 
         this.canvasEl = document.getElementById("canvas-timer");
         this.canvasCtx = this.canvasEl.getContext('2d');
@@ -66,7 +67,7 @@ class Timer {
         this.fontColor = '59FFA0';
     }
     init() {
-        const text = formatTime(this.leftSeconds);
+        const text = formatTime(this.getLeftMilliSeconds());
         this.writeToCanvas(text);
         loadVideo(this.canvasEl);
     }
@@ -74,45 +75,65 @@ class Timer {
         if (this.isPlaying) {
             return;
         }
-        if (!this.isPause) {
-            this.setTime();
+        if (this.isPause) {
+            this.restoreTimeFromPause();
+        } else {
+            this.setTimeFromInputBox();
         }
+
         this.interval = setInterval(() => {
-            this.leftSeconds -= 1;
-            if (this.leftSeconds <= 0) {
-                this.leftSeconds = 0;
+            const leftMilliseconds = this.getLeftMilliSeconds();
+            if (leftMilliseconds === 0) {
                 this.stop();
                 this.isPause = false;
                 if (document.getElementById("checkbox-play-beep").checked) {
                     playBeep();
                 }
             }
-            const text = formatTime(this.leftSeconds);
+
+            const text = formatTime(leftMilliseconds);
             this.writeToCanvas(text);
-        }, 1000);
+        }, 100);
+
         playVideo();
         this.isPlaying = true;
         this.isPause = false;
     }
     restart() {
-        this.setTime();
+        this.setTimeFromInputBox();
         this.stop();
         this.start();
     }
     stop() {
         clearInterval(this.interval);
         this.interval = null;
-        const text = formatTime(this.leftSeconds);
+        const leftMilliseconds = this.getLeftMilliSeconds();
+        const text = formatTime(leftMilliseconds);
         this.writeToCanvas(text);
         this.isPlaying = false;
         this.isPause = true;
+        this.saveMillisecondsToPause(leftMilliseconds);
     }
-    setTime() {
+    setTimeFromInputBox() {
         const inputMin = document.getElementById("input-min");
         const inputSec = document.getElementById("input-sec");
-        this.leftSeconds = Number(inputMin.value) * 60 + Number(inputSec.value);
+        const leftSeconds = Number(inputMin.value) * 60 + Number(inputSec.value);
+        this.endEpoch = Date.now() + leftSeconds * 1000;
     }
-
+    getLeftMilliSeconds() {
+        if (this.isPause) {
+            return this.leftMillisecondsAtPause;
+        } else {
+            return Math.max(0, (this.endEpoch || 0) - Date.now());
+        }
+    }
+    saveMillisecondsToPause(leftMilliseconds) {
+        this.leftMillisecondsAtPause = leftMilliseconds;
+    }
+    restoreTimeFromPause() {
+        const leftMillisecondsAtPause = this.leftMillisecondsAtPause || 0;
+        this.endEpoch = Date.now() + leftMillisecondsAtPause;
+    }
     writeToCanvas(text) {
         this.canvasCtx.font = this.fontSize + ' ' + this.font;
         if (text === TIME_OVER_TEXT) {
@@ -190,7 +211,7 @@ window.onload = function () {
 
     const btnReset = document.getElementById('btn-reset');
     btnReset.addEventListener('click', () => {
-        timer.setTime();
+        timer.setTimeFromInputBox();
         timer.stop();
     });
 };
