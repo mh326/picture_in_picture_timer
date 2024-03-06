@@ -167,7 +167,7 @@ class TimerUI {
     start() {
         this.timer.start();
 
-        this.interval = setInterval(() => {
+        const update = () => {
             const leftMilliseconds = this.timer.getLeftMilliseconds();
             if (leftMilliseconds === 0) {
                 this.stop();
@@ -178,7 +178,11 @@ class TimerUI {
 
             const text = this.timer.format();
             this.writeToCanvas(text);
-        }, 100);
+        };
+
+        // Update UI and state periodically. This interval is how often the UI
+        // update occurs, so it does not affect the timer accuracy.
+        this.interval = setInterval(update, 100);
 
         playVideo();
     }
@@ -201,6 +205,8 @@ class TimerUI {
         this.timer.setMilliseconds(leftSeconds * 1000);
     }
     writeToCanvas(text) {
+        // writeToCanvas() can be called frequently with the same text. To
+        // avoid unnecessary canvas update, we check if the text is changed.
         if (this.currentCanvasText === text) {
             return;
         }
