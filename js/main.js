@@ -2,15 +2,6 @@ const TIME_OVER_TEXT = "TIME OVER";
 
 const zeroPad = (num, places) => String(num).padStart(places, '0');
 
-function formatTime(leftSeconds) {
-    if (leftSeconds === 0) {
-        return TIME_OVER_TEXT;
-    }
-    const minutes = Math.floor(leftSeconds / 60);
-    const seconds = leftSeconds % 60;
-    return `${zeroPad(minutes, 2)} : ${zeroPad(seconds, 2)}`;
-}
-
 async function loadVideo(canvasEl) {
     const video = document.getElementById("video-timer");
     video.srcObject = canvasEl.captureStream();
@@ -52,13 +43,108 @@ function setParam(timer, params, name) {
 }
 
 class Timer {
+    /**
+     * The entire timer state. Stores the time left in milliseconds if
+     * stopped, or the end epoch if running.
+     * @type {{isStopped: true, leftMilliseconds: number} | {isStopped: false, endEpoch: number}}
+     */
+    #state;
+
     constructor() {
-        this.setTime();
+        this.#state = {
+            isStopped: true,
+            leftMilliseconds: 0,
+        };
+    }
+
+    /**
+     * Set timer milliseconds. The timer will not be started / stopped by this
+     * method.
+     * @param {number} milliseconds
+     */
+    setMilliseconds(milliseconds) {
+        if (this.#state.isStopped) {
+            this.#state.leftMilliseconds = milliseconds;
+        } else {
+            this.#state.endEpoch = Date.now() + milliseconds;
+        }
+    }
+
+    /**
+     * Get milliseconds of the time left.
+     * @returns {number}
+     */
+    getLeftMilliseconds() {
+        return this.#state.isStopped
+            ? this.#state.leftMilliseconds
+            : Math.max(0, this.#state.endEpoch - Date.now());
+    }
+
+    start() {
+        if (!this.#state.isStopped) {
+            return;
+        }
+
+        const endEpoch = Date.now() + this.#state.leftMilliseconds;
+        this.#state = {
+            isStopped: false,
+            endEpoch,
+        };
+    }
+
+    stop() {
+        if (this.#state.isStopped) {
+            return;
+        }
+
+        const leftMilliseconds = this.getLeftMilliseconds();
+        this.#state = {
+            isStopped: true,
+            leftMilliseconds: leftMilliseconds,
+        };
+    }
+
+    /**
+     * Returns whether the timer is stopped or not. In addition to explicitly
+     * stopped, a timer that finishes the specified milliseconds is also
+     * considered as stopped.
+     * @returns {boolean}
+     */
+    isStopped() {
+        if (this.#state.isStopped) {
+            return true;
+        }
+
+        const leftMilliseconds = this.getLeftMilliseconds();
+        if (leftMilliseconds === 0) {
+            this.stop();
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns formatted string to display the left time.
+     * @type {string}
+     */
+    format() {
+        const leftSeconds = Math.ceil(this.getLeftMilliseconds() / 1000);
+        if (leftSeconds === 0) {
+            return TIME_OVER_TEXT;
+        }
+        const minutes = Math.floor(leftSeconds / 60);
+        const seconds = leftSeconds % 60;
+        return `${zeroPad(minutes, 2)} : ${zeroPad(seconds, 2)}`;
+    }
+}
+
+class TimerUI {
+    constructor() {
+        this.timer = new Timer();
 
         this.canvasEl = document.getElementById("canvas-timer");
         this.canvasCtx = this.canvasEl.getContext('2d');
-        this.isPlaying = false;
-        this.isPause = false;
 
         this.font = 'sans-serif';
         this.fontSize = '52px';
@@ -66,54 +152,66 @@ class Timer {
         this.fontColor = '59FFA0';
     }
     init() {
-        const text = formatTime(this.leftSeconds);
+        this.setTimeFromInputBox();
+        const text = this.timer.format();
         this.writeToCanvas(text);
         loadVideo(this.canvasEl);
     }
+    toggle() {
+        if (this.timer.isStopped()) {
+            this.start();
+        } else {
+            this.stop();
+        }
+    }
     start() {
-        if (this.isPlaying) {
-            return;
-        }
-        if (!this.isPause) {
-            this.setTime();
-        }
-        this.interval = setInterval(() => {
-            this.leftSeconds -= 1;
-            if (this.leftSeconds <= 0) {
-                this.leftSeconds = 0;
+        this.timer.start();
+
+        const update = () => {
+            const leftMilliseconds = this.timer.getLeftMilliseconds();
+            if (leftMilliseconds === 0) {
                 this.stop();
-                this.isPause = false;
                 if (document.getElementById("checkbox-play-beep").checked) {
                     playBeep();
                 }
             }
-            const text = formatTime(this.leftSeconds);
+
+            const text = this.timer.format();
             this.writeToCanvas(text);
-        }, 1000);
+        };
+
+        // Update UI and state periodically. This interval is how often the UI
+        // update occurs, so it does not affect the timer accuracy.
+        this.interval = setInterval(update, 100);
+
         playVideo();
-        this.isPlaying = true;
-        this.isPause = false;
     }
     restart() {
-        this.setTime();
+        this.setTimeFromInputBox();
         this.stop();
         this.start();
     }
     stop() {
         clearInterval(this.interval);
         this.interval = null;
-        const text = formatTime(this.leftSeconds);
+        this.timer.stop();
+        const text = this.timer.format();
         this.writeToCanvas(text);
-        this.isPlaying = false;
-        this.isPause = true;
     }
-    setTime() {
+    setTimeFromInputBox() {
         const inputMin = document.getElementById("input-min");
         const inputSec = document.getElementById("input-sec");
-        this.leftSeconds = Number(inputMin.value) * 60 + Number(inputSec.value);
+        const leftSeconds = Number(inputMin.value) * 60 + Number(inputSec.value);
+        this.timer.setMilliseconds(leftSeconds * 1000);
     }
-
     writeToCanvas(text) {
+        // writeToCanvas() can be called frequently with the same text. To
+        // avoid unnecessary canvas update, we check if the text is changed.
+        if (this.currentCanvasText === text) {
+            return;
+        }
+        this.currentCanvasText = text;
+
         this.canvasCtx.font = this.fontSize + ' ' + this.font;
         if (text === TIME_OVER_TEXT) {
             this.canvasCtx.font = this.fontSizeTimeOver + ' ' + this.font;
@@ -171,7 +269,7 @@ window.onload = function () {
         document.getElementById("checkbox-play-beep").checked = false;
     }
 
-    const timer = new Timer();
+    const timer = new TimerUI();
     timer.init();
 
     setParam(timer, params, 'font');
@@ -181,16 +279,12 @@ window.onload = function () {
 
     const btnStart = document.getElementById('btn-start');
     btnStart.addEventListener('click', () => {
-        if (!timer.isPlaying) {
-            timer.start();
-        } else {
-            timer.stop();
-        }
+        timer.toggle();
     });
 
     const btnReset = document.getElementById('btn-reset');
     btnReset.addEventListener('click', () => {
-        timer.setTime();
+        timer.setTimeFromInputBox();
         timer.stop();
     });
 };
