@@ -194,7 +194,9 @@ class TimerUI {
 
             const text = this.timer.format();
             this.writeToCanvas(text);
-            this.timer.saveState();
+            if (document.getElementById("checkbox-keep-elapsed-time").checked) {
+                this.timer.saveState();
+            }
         };
 
         // Update UI and state periodically. This interval is how often the UI
@@ -286,6 +288,11 @@ window.onload = function () {
         document.getElementById("checkbox-play-beep").checked = false;
     }
 
+    const paramKeepElapsedTime = params.get('keepElapsedTime');
+    if (paramKeepElapsedTime != null && paramKeepElapsedTime == true) {
+        document.getElementById("checkbox-keep-elapsed-time").checked = true;
+    }
+
     const timer = new TimerUI();
     timer.init();
 
@@ -305,5 +312,12 @@ window.onload = function () {
     btnReset.addEventListener('click', () => {
         timer.setTimeFromInputBox();
         timer.stop();
+    });
+
+    const checkboxKeepElapsedTime = document.getElementById("checkbox-keep-elapsed-time");
+    checkboxKeepElapsedTime.addEventListener('change', () => {
+        if (!this.checked) {
+            localStorage.removeItem("leftMilliseconds");
+        }
     });
 };

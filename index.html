@@ -27,22 +27,24 @@
             <div class="py-2">
                 <button id="btn-start" type="button" class="btn btn-primary btn-lg">START/STOP</button>
                 <button id="btn-reset" type="button" class="btn btn-secondary btn-lg">RESET</button>
-                <div class="form-check py-3">
-                    <input class="form-check-input" type="checkbox" value="" id="checkbox-play-beep" checked>
-                    <label class="form-check-label" for="checkbox-play-beep">
-                        Beep音を鳴らす
-                    </label>
+                <div class="py-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="" id="checkbox-play-beep" checked>
+                        <label class="form-check-label" for="checkbox-play-beep">
+                            Beep音を鳴らす
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="" id="checkbox-keep-elapsed-time">
+                        <label class="form-check-label" for="checkbox-keep-elapsed-time">
+                            残り時間を保持する
+                        </label>
+                    </div>
                 </div>
             </div>
         </form>
         <div class="pb-2" id="video-container" hidden>
-            <video
-                id="video-timer"
-                width="440"
-                height="240"
-                muted
-                autoPictureInPicture
-            ></video>
+            <video id="video-timer" width="440" height="240" muted autoPictureInPicture></video>
         </div>
         <div class="py-2">
             <p>
