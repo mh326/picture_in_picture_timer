@@ -27,30 +27,32 @@
             <div class="py-2">
                 <button id="btn-start" type="button" class="btn btn-primary btn-lg">START/STOP</button>
                 <button id="btn-reset" type="button" class="btn btn-secondary btn-lg">RESET</button>
-                <div class="form-check py-3">
-                    <input class="form-check-input" type="checkbox" value="" id="checkbox-play-beep" checked>
-                    <label class="form-check-label" for="checkbox-play-beep">
-                        Beep音を鳴らす
-                    </label>
+                <div class="py-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="" id="checkbox-play-beep" checked>
+                        <label class="form-check-label" for="checkbox-play-beep">
+                            Beep音を鳴らす
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="" id="checkbox-keep-elapsed-time">
+                        <label class="form-check-label" for="checkbox-keep-elapsed-time">
+                            残り時間を保持する
+                        </label>
+                    </div>
                 </div>
             </div>
         </form>
         <div class="pb-2" id="video-container" hidden>
-            <video
-                id="video-timer"
-                width="440"
-                height="240"
-                muted
-                autoPictureInPicture
-            ></video>
+            <video id="video-timer" width="440" height="240" muted autoPictureInPicture></video>
         </div>
         <div class="py-2">
             <p>
                 使い方は<a href="help.html">こちら</a>
             </p>
             <p>
-                参考：<a href="https://blog.agney.dev/pomodoro-on-pip/">Let&apos;s make a Picture in Picture Countdown
-                    timer on the Web | The Mindless</a>
+                参考：<a href="https://www.agney.dev/blog/pomodoro-on-pip">Let&apos;s make a Picture in Picture Countdown
+                    timer on the Web | Blog | Agney</a>
             </p>
         </div>
         <canvas id="canvas-timer" width="220" height="120" hidden></canvas>

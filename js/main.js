@@ -85,7 +85,7 @@ class Timer {
             return;
         }
 
-        const endEpoch = Date.now() + this.#state.leftMilliseconds;
+        const endEpoch = Date.now() + Number(this.#state.leftMilliseconds);
         this.#state = {
             isStopped: false,
             endEpoch,
@@ -137,6 +137,22 @@ class Timer {
         const seconds = leftSeconds % 60;
         return `${zeroPad(minutes, 2)} : ${zeroPad(seconds, 2)}`;
     }
+
+    loadState() {
+        const leftMilliseconds = localStorage.getItem("leftMilliseconds");
+        if (leftMilliseconds != null) {
+            this.#state.leftMilliseconds = leftMilliseconds;
+        }
+    }
+
+    saveState() {
+        const leftMilliseconds = this.getLeftMilliseconds();
+        if (leftMilliseconds > 0) {
+            localStorage.setItem("leftMilliseconds", leftMilliseconds);
+        } else {
+            localStorage.removeItem("leftMilliseconds");
+        }
+    }
 }
 
 class TimerUI {
@@ -178,6 +194,9 @@ class TimerUI {
 
             const text = this.timer.format();
             this.writeToCanvas(text);
+            if (document.getElementById("checkbox-keep-elapsed-time").checked) {
+                this.timer.saveState();
+            }
         };
 
         // Update UI and state periodically. This interval is how often the UI
@@ -269,6 +288,11 @@ window.onload = function () {
         document.getElementById("checkbox-play-beep").checked = false;
     }
 
+    const paramKeepElapsedTime = params.get('keepElapsedTime');
+    if (paramKeepElapsedTime != null && paramKeepElapsedTime == true) {
+        document.getElementById("checkbox-keep-elapsed-time").checked = true;
+    }
+
     const timer = new TimerUI();
     timer.init();
 
@@ -276,6 +300,8 @@ window.onload = function () {
     setParam(timer, params, 'fontSize');
     setParam(timer, params, 'fontSizeTimeOver');
     setParam(timer, params, 'fontColor');
+
+    timer.timer.loadState();
 
     const btnStart = document.getElementById('btn-start');
     btnStart.addEventListener('click', () => {
@@ -286,5 +312,12 @@ window.onload = function () {
     btnReset.addEventListener('click', () => {
         timer.setTimeFromInputBox();
         timer.stop();
+    });
+
+    const checkboxKeepElapsedTime = document.getElementById("checkbox-keep-elapsed-time");
+    checkboxKeepElapsedTime.addEventListener('change', () => {
+        if (!this.checked) {
+            localStorage.removeItem("leftMilliseconds");
+        }
     });
 };
