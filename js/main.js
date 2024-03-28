@@ -2,27 +2,6 @@ const TIME_OVER_TEXT = "TIME OVER";
 
 const zeroPad = (num, places) => String(num).padStart(places, '0');
 
-async function loadVideo(canvasEl) {
-    const video = document.getElementById("video-timer");
-    video.srcObject = canvasEl.captureStream();
-}
-
-async function playVideo() {
-    const video = document.getElementById("video-timer");
-    video.play();
-
-    if (video.requestPictureInPicture !== undefined) {
-        // Chromeなど、Picture-in-Picture APIに対応しているブラウザであれば
-        // そのままPicture-in-Pictureモードに入る
-        video.requestPictureInPicture();
-    } else {
-        // Firefoxなど、Picture-in-Picture APIに対応していないブラウザであれば
-        // ビデオそのものを画面に表示する
-        const videoContainer = document.getElementById("video-container");
-        videoContainer.hidden = false;
-    }
-}
-
 async function playBeep() {
     // https://qiita.com/isseium/items/12b215b6eab26acd2afe
     // クリップボードにあるbase64文字列を貼り付けます
@@ -42,7 +21,149 @@ function setParam(timer, params, name) {
     }
 }
 
-class Timer {
+/**
+ * Returns formatted string to display the left time.
+ * @param leftMilliseconds {number}
+ * @returns {string}
+ */
+function formatMilliseconds(leftMilliseconds) {
+    const leftSeconds = Math.ceil(leftMilliseconds / 1000);
+    if (leftSeconds === 0) {
+        return TIME_OVER_TEXT;
+    }
+    const minutes = Math.floor(leftSeconds / 60);
+    const seconds = leftSeconds % 60;
+    return `${zeroPad(minutes, 2)} : ${zeroPad(seconds, 2)}`;
+}
+
+class DeadlineBasedTimer {
+    /**
+     * The entire timer state. Stores the time left in milliseconds if
+     * stopped, or the end epoch if running.
+     * @type {{endEpoch: number} & {isStopped: true, leftMilliseconds: number} | {isStopped: false}}
+     */
+    #state;
+
+    constructor() {
+        this.#state = {
+            endEpoch: Date.now(),
+            isStopped: true,
+            leftMilliseconds: 0,
+        };
+    }
+
+    getTimerType() {
+        return "deadline";
+    }
+
+    /**
+     * Sets the timer from input box parameters.
+     * @param {number} hour
+     * @param {number} min
+     */
+    setTimeFromInputBox(hour, min) {
+        const today = new Date();
+        today.setHours(hour);
+        today.setMinutes(min);
+        today.setSeconds(0);
+        today.setMilliseconds(0);
+
+        this.setEndEpoch(today.getTime());
+    }
+
+    /**
+     * Set timer end epoch. The timer will not be started / stopped by this
+     * method.
+     * @param {number} endEpoch
+     */
+    setEndEpoch(endEpoch) {
+        if (this.#state.isStopped) {
+            this.#state = {
+                endEpoch,
+                isStopped: true,
+                leftMilliseconds: Math.max(0, endEpoch - Date.now()),
+            };
+        } else {
+            this.#state = {
+                endEpoch,
+                isStopped: false,
+            };
+        }
+    }
+
+    /**
+     * Get milliseconds of the time left.
+     * @returns {number}
+     */
+    getLeftMilliseconds() {
+        return this.#state.isStopped
+            ? this.#state.leftMilliseconds
+            : Math.max(0, this.#state.endEpoch - Date.now());
+    }
+
+    start() {
+        if (!this.#state.isStopped) {
+            return;
+        }
+
+        const endEpoch = this.#state.endEpoch;
+        this.#state = {
+            isStopped: false,
+            endEpoch,
+        };
+    }
+
+    /**
+     * Stop the timer display. Timer is still running in the background.
+     */
+    stop() {
+        if (this.#state.isStopped) {
+            return;
+        }
+
+        const endEpoch = this.#state.endEpoch;
+        const leftMilliseconds = this.getLeftMilliseconds();
+        this.#state = {
+            endEpoch,
+            isStopped: true,
+            leftMilliseconds,
+        };
+    }
+
+    /**
+     * Returns whether the timer display is stopped or not.
+     * @returns {boolean}
+     */
+    isStopped() {
+        return this.#state.isStopped;
+    }
+
+    /**
+     * Returns whether the state is actually loaded.
+     */
+    loadState() {
+        const endEpoch = localStorage.getItem("endEpoch");
+        if (endEpoch == null) return false;
+        this.setEndEpoch(Number(endEpoch));
+        this.stop();
+
+        return true;
+    }
+
+    saveState() {
+        if (this.getLeftMilliseconds() > 0) {
+            localStorage.setItem("endEpoch", this.#state.endEpoch);
+        } else {
+            this.clearState();
+        }
+    }
+
+    clearState() {
+        localStorage.removeItem("endEpoch");
+    }
+}
+
+class DurationBasedTimer {
     /**
      * The entire timer state. Stores the time left in milliseconds if
      * stopped, or the end epoch if running.
@@ -55,6 +176,20 @@ class Timer {
             isStopped: true,
             leftMilliseconds: 0,
         };
+    }
+
+    getTimerType() {
+        return "duration";
+    }
+
+    /**
+     * Sets the timer from input box parameters.
+     * @param {number} hour
+     * @param {number} min
+     */
+    setTimeFromInputBox(min, sec) {
+        const leftSeconds = min * 60 + sec;
+        this.setMilliseconds(leftSeconds * 1000);
     }
 
     /**
@@ -100,7 +235,7 @@ class Timer {
         const leftMilliseconds = this.getLeftMilliseconds();
         this.#state = {
             isStopped: true,
-            leftMilliseconds: leftMilliseconds,
+            leftMilliseconds,
         };
     }
 
@@ -124,25 +259,14 @@ class Timer {
         return false;
     }
 
-    /**
-     * Returns formatted string to display the left time.
-     * @type {string}
-     */
-    format() {
-        const leftSeconds = Math.ceil(this.getLeftMilliseconds() / 1000);
-        if (leftSeconds === 0) {
-            return TIME_OVER_TEXT;
-        }
-        const minutes = Math.floor(leftSeconds / 60);
-        const seconds = leftSeconds % 60;
-        return `${zeroPad(minutes, 2)} : ${zeroPad(seconds, 2)}`;
-    }
-
     loadState() {
         const leftMilliseconds = localStorage.getItem("leftMilliseconds");
-        if (leftMilliseconds != null) {
-            this.#state.leftMilliseconds = leftMilliseconds;
-        }
+        if (leftMilliseconds == null) return false;
+        this.#state = {
+            isStopped: true,
+            leftMilliseconds: Number(leftMilliseconds),
+        };
+        return true;
     }
 
     saveState() {
@@ -150,15 +274,32 @@ class Timer {
         if (leftMilliseconds > 0) {
             localStorage.setItem("leftMilliseconds", leftMilliseconds);
         } else {
-            localStorage.removeItem("leftMilliseconds");
+            this.clearState();
         }
+    }
+
+    clearState() {
+        localStorage.removeItem("leftMilliseconds");
     }
 }
 
 class TimerUI {
-    constructor() {
-        this.timer = new Timer();
+    /** @type {DurationBasedTimer | DeadlineBasedTimer} */
+    #timer;
 
+    /** @type {Array<() => void>} */
+    #onUpdateHandlers;
+
+    /** @type {Array<() => void>} */
+    #justFinishedHandlers;
+
+    constructor() {
+        this.#timer = new DurationBasedTimer();
+        this.#onUpdateHandlers = [];
+        this.#justFinishedHandlers = [];
+
+        this.videoContainerEl = document.getElementById("video-container");
+        this.videoEl = document.getElementById("video-timer");
         this.canvasEl = document.getElementById("canvas-timer");
         this.canvasCtx = this.canvasEl.getContext('2d');
 
@@ -166,63 +307,108 @@ class TimerUI {
         this.fontSize = '52px';
         this.fontSizeTimeOver = '34px';
         this.fontColor = '59FFA0';
+
+        this.init();
     }
+
     init() {
         this.setTimeFromInputBox();
-        const text = this.timer.format();
+        this.loadState();
+        const text = formatMilliseconds(this.#timer.getLeftMilliseconds());
         this.writeToCanvas(text);
-        loadVideo(this.canvasEl);
+        this.loadVideo();
     }
+
+    /**
+     * @param {"duration" | "deadline"} timerType
+     */
+    changeTimer(timerType) {
+        if (this.#timer.getTimerType() === timerType) return;
+        console.log("changing");
+        switch (timerType) {
+            case "duration":
+                this.stop();
+                this.#timer = new DurationBasedTimer();
+                this.init();
+                break;
+            case "deadline":
+                this.stop();
+                this.#timer = new DeadlineBasedTimer();
+                this.init();
+                break;
+        }
+    }
+
     toggle() {
-        if (this.timer.isStopped()) {
+        if (this.#timer.isStopped()) {
             this.start();
         } else {
             this.stop();
         }
     }
+
     start() {
-        this.timer.start();
+        this.#timer.start();
 
         const update = () => {
-            const leftMilliseconds = this.timer.getLeftMilliseconds();
+            const leftMilliseconds = this.#timer.getLeftMilliseconds();
             if (leftMilliseconds === 0) {
                 this.stop();
-                if (document.getElementById("checkbox-play-beep").checked) {
-                    playBeep();
-                }
+                this.#justFinishedHandlers.forEach(handler => handler());
             }
 
-            const text = this.timer.format();
+            const text = formatMilliseconds(this.#timer.getLeftMilliseconds());
             this.writeToCanvas(text);
-            if (document.getElementById("checkbox-keep-elapsed-time").checked) {
-                this.timer.saveState();
-            }
+            this.#onUpdateHandlers.forEach(handler => handler());
         };
 
         // Update UI and state periodically. This interval is how often the UI
         // update occurs, so it does not affect the timer accuracy.
         this.interval = setInterval(update, 100);
 
-        playVideo();
+        this.playVideo();
     }
+
     restart() {
         this.setTimeFromInputBox();
         this.stop();
         this.start();
     }
+
     stop() {
         clearInterval(this.interval);
         this.interval = null;
-        this.timer.stop();
-        const text = this.timer.format();
+        this.#timer.stop();
+        const text = formatMilliseconds(this.#timer.getLeftMilliseconds());
         this.writeToCanvas(text);
     }
+
     setTimeFromInputBox() {
-        const inputMin = document.getElementById("input-min");
-        const inputSec = document.getElementById("input-sec");
-        const leftSeconds = Number(inputMin.value) * 60 + Number(inputSec.value);
-        this.timer.setMilliseconds(leftSeconds * 1000);
+        const inputMin = document.getElementById("input-first");
+        const inputSec = document.getElementById("input-second");
+        this.#timer.setTimeFromInputBox(Number(inputMin.value), Number(inputSec.value));
+        const text = formatMilliseconds(this.#timer.getLeftMilliseconds());
+        this.writeToCanvas(text);
     }
+
+    loadVideo() {
+        this.videoEl.srcObject = this.canvasEl.captureStream();
+    }
+
+    playVideo() {
+        this.videoEl.play();
+
+        if (this.videoEl.requestPictureInPicture !== undefined) {
+            // Chromeなど、Picture-in-Picture APIに対応しているブラウザであれば
+            // そのままPicture-in-Pictureモードに入る
+            this.videoEl.requestPictureInPicture();
+        } else {
+            // Firefoxなど、Picture-in-Picture APIに対応していないブラウザであれば
+            // ビデオそのものを画面に表示する
+            this.videoContainerEl.hidden = false;
+        }
+    }
+
     writeToCanvas(text) {
         // writeToCanvas() can be called frequently with the same text. To
         // avoid unnecessary canvas update, we check if the text is changed.
@@ -242,6 +428,38 @@ class TimerUI {
         this.canvasCtx.fillStyle = "#" + this.fontColor;
         this.canvasCtx.fillText(text, this.canvasEl.width / 2, this.canvasEl.height / 2);
     }
+
+    /**
+     * Adds a handler to be called when the timer is updated.
+     * @param {() => void} handler
+     */
+    onUpdate(handler) {
+        this.#onUpdateHandlers.push(handler);
+    }
+
+    /**
+     * Adds a handler to be called when the timer is updated.
+     * @param {() => void} handler
+     */
+    justFinished(handler) {
+        this.#justFinishedHandlers.push(handler);
+    }
+
+    getTimerType() {
+        return this.#timer.getTimerType();
+    }
+
+    loadState() {
+        return this.#timer.loadState();
+    }
+
+    saveState() {
+        this.#timer.saveState();
+    }
+
+    clearState() {
+        this.#timer.clearState();
+    }
 }
 
 window.onload = function () {
@@ -251,7 +469,7 @@ window.onload = function () {
     if (paramMin != null) {
         const min = Number(paramMin);
         if (!isNaN(min) && min >= 0) {
-            const inputMin = document.getElementById("input-min");
+            const inputMin = document.getElementById("input-first");
             inputMin.value = min;
         }
     }
@@ -260,7 +478,7 @@ window.onload = function () {
     if (paramSec != null) {
         const sec = Number(paramSec);
         if (!isNaN(sec) && sec >= 0) {
-            const inputSec = document.getElementById("input-sec");
+            const inputSec = document.getElementById("input-second");
             inputSec.value = sec;
         }
     }
@@ -283,25 +501,49 @@ window.onload = function () {
         }
     }
 
+    const checkboxPlayBeep = document.getElementById("checkbox-play-beep");
     const paramMute = params.get('mute');
     if (paramMute != null && paramMute == true) {
-        document.getElementById("checkbox-play-beep").checked = false;
+        checkboxPlayBeep.checked = false;
     }
 
+    const checkboxKeepElapsedTime = document.getElementById("checkbox-keep-elapsed-time");
     const paramKeepElapsedTime = params.get('keepElapsedTime');
     if (paramKeepElapsedTime != null && paramKeepElapsedTime == true) {
-        document.getElementById("checkbox-keep-elapsed-time").checked = true;
+        checkboxKeepElapsedTime.checked = true;
     }
 
+    checkboxKeepElapsedTime.addEventListener('change', () => {
+        if (checkboxKeepElapsedTime.checked) {
+            timer.saveState();
+        } else {
+            timer.clearState();
+        }
+    });
+
     const timer = new TimerUI();
-    timer.init();
 
     setParam(timer, params, 'font');
     setParam(timer, params, 'fontSize');
     setParam(timer, params, 'fontSizeTimeOver');
     setParam(timer, params, 'fontColor');
 
-    timer.timer.loadState();
+    if (timer.loadState()) {
+        checkboxKeepElapsedTime.checked = true;
+        timer.playVideo();
+    }
+
+    timer.justFinished(() => {
+        if (checkboxPlayBeep.checked) {
+            playBeep();
+        }
+    });
+
+    timer.onUpdate(() => {
+        if (checkboxKeepElapsedTime.checked) {
+            timer.saveState();
+        }
+    });
 
     const btnStart = document.getElementById('btn-start');
     btnStart.addEventListener('click', () => {
@@ -310,14 +552,28 @@ window.onload = function () {
 
     const btnReset = document.getElementById('btn-reset');
     btnReset.addEventListener('click', () => {
-        timer.setTimeFromInputBox();
         timer.stop();
+        timer.setTimeFromInputBox();
     });
 
-    const checkboxKeepElapsedTime = document.getElementById("checkbox-keep-elapsed-time");
-    checkboxKeepElapsedTime.addEventListener('change', () => {
-        if (!this.checked) {
-            localStorage.removeItem("leftMilliseconds");
+    const labelFirstUnit = document.getElementById('input-first-unit');
+    const labelSecondUnit = document.getElementById('input-second-unit');
+
+    const radioDuration = document.getElementById('timer-duration');
+    radioDuration.addEventListener('change', () => {
+        labelFirstUnit.textContent = "min";
+        labelSecondUnit.textContent = "sec";
+        if (radioDuration.checked) {
+            timer.changeTimer("duration");
+        }
+    });
+
+    const radioDeadline = document.getElementById('timer-deadline');
+    radioDeadline.addEventListener('change', () => {
+        labelFirstUnit.textContent = "時";
+        labelSecondUnit.textContent = "分";
+        if (radioDeadline.checked) {
+            timer.changeTimer("deadline");
         }
     });
 };

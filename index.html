@@ -13,33 +13,45 @@
 <body>
     <div class="container p-4">
         <h3>Picture in Picture Timer</h3>
-        <form class="row g-1 py-4">
-            <div class="col-2">
-                <input id="input-min" class="form-control form-control-lg" type="number" placeholder="5" value="5"
-                    min=0>
-                <span>min</span>
+        <form class="g-1 py-4">
+            <div class="py-2"">
+                <input type="radio" name="timer-type" id="timer-duration" autocomplete="off" checked>
+                <label for="timer-duration">一定時間</label>
+                <input type="radio" name="timer-type" id="timer-deadline" autocomplete="off">
+                <label for="timer-deadline">特定の時刻まで</label>
             </div>
-            <div class="col-2">
-                <input id="input-sec" class="form-control form-control-lg" type="number" placeholder="0" value="0"
-                    min=0>
-                <span>sec</span>
+            <div class="row py-4">
+                <div class="col-2">
+                    <input id="input-first" class="form-control form-control-lg" type="number" placeholder="5" value="5"
+                        min=0>
+                    <label id="input-first-unit" for="input-first">min</label>
+                </div>
+                <div class="col-2">
+                    <input id="input-second" class="form-control form-control-lg" type="number" placeholder="0" value="0"
+                        min=0>
+                    <label id="input-second-unit" for="input-second">sec</label>
+                </div>
             </div>
-            <div class="py-2">
-                <button id="btn-start" type="button" class="btn btn-primary btn-lg">START/STOP</button>
-                <button id="btn-reset" type="button" class="btn btn-secondary btn-lg">RESET</button>
-                <div class="py-3">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" value="" id="checkbox-play-beep" checked>
-                        <label class="form-check-label" for="checkbox-play-beep">
-                            Beep音を鳴らす
-                        </label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" value="" id="checkbox-keep-elapsed-time">
-                        <label class="form-check-label" for="checkbox-keep-elapsed-time">
-                            残り時間を保持する
-                        </label>
-                    </div>
+            <div class="row py-2">
+                <div class="col-2">
+                    <button id="btn-start" type="button" class="btn btn-primary btn-lg w-100">START/STOP</button>
+                </div>
+                <div class="col-2">
+                    <button id="btn-reset" type="button" class="btn btn-secondary btn-lg w-100">RESET</button>
+                </div>
+            </div>
+            <div class="py-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="" id="checkbox-play-beep" checked>
+                    <label class="form-check-label" for="checkbox-play-beep">
+                        Beep音を鳴らす
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="" id="checkbox-keep-elapsed-time">
+                    <label class="form-check-label" for="checkbox-keep-elapsed-time">
+                        残り時間を保持する
+                    </label>
                 </div>
             </div>
         </form>
